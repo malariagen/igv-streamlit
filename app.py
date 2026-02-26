@@ -237,8 +237,8 @@ elif mode == MODE_REMOTE:
             },
             {
                 "name": sample_id,
-                "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15606936/PF0833-C.cram",
-                "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15606936/PF0833-C.cram.crai",
+                "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram",
+                "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram.crai",
                 "format": "cram",
                 "type": "alignment",
             },
@@ -246,40 +246,6 @@ elif mode == MODE_REMOTE:
         height=browser_height,
         key="remote_browser",
     )
-
-    with st.expander("Python code"):
-        st.code(
-            f"""
-import igv_streamlit as sigv
-
-BASE = "https://pf8-release.cog.sanger.ac.uk"
-
-sigv.igv_browser(
-    reference={{
-        "fastaURL": f"{{BASE}}/reference/PlasmoDB-54-Pfalciparum3D7-Genome.fasta",
-        "name": "PlasmoDB-54 Pf3D7",
-    }},
-    locus="Pf3D7_01_v3:1-100000",
-    tracks=[
-        {{
-            "name": "Annotation",
-            "url": f"{{BASE}}/annotations/PlasmoDB-55_Pfalciparum3D7.gff.gz",
-            "format": "gff3",
-            "type": "annotation",
-        }},
-        {{
-            "name": "PF0833-C",
-            "url":      f"{{BASE}}/cram/PF0833-C.cram",
-            "indexURL": f"{{BASE}}/cram/PF0833-C.cram.crai",
-            "format": "cram",
-            "type": "alignment",
-        }},
-    ],
-)
-""",
-            language="python",
-        )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # MODE 4 – advanced / paste raw JSON config
