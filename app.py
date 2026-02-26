@@ -1,6 +1,5 @@
-# app.py
-
 import os
+import json
 import streamlit as st
 
 import sys
@@ -13,26 +12,28 @@ st.set_page_config(
     layout     = "wide"
 )
 
-st.logo("assets/igv-streamlit-logo.png", size = "large")
-st.title("igv-streamlit", text_alignment = "center")
+st.logo("assets/igv-streamlit-logo.png", size="large")
+st.title("igv-streamlit", text_alignment="center")
 st.divider()
 
-# ─ Tab selection in sidebar (controls which content + config to show) ──────────
+# ── Sidebar navigation ────────────────────────────────────────────────────────
 st.sidebar.subheader("Navigation")
-TAB_WELCOME = "Welcome page"
-TAB_BUILTIN = "igv.js's built-in hg19 demo"
-TAB_LOCAL   = "Local files"
-TAB_REMOTE  = "Remote PF8-release"
+TAB_WELCOME  = "Welcome page"
+TAB_BUILTIN  = "igv.js's built-in hg19 demo"
+TAB_LOCAL    = "Local files"
+TAB_REMOTE   = "Remote PF8-release"
 TAB_ADVANCED = "Advanced config"
 
-active_tab = st.sidebar.radio("Select mode",
+active_tab = st.sidebar.radio(
+    "Select mode",
     [TAB_WELCOME, TAB_BUILTIN, TAB_LOCAL, TAB_REMOTE, TAB_ADVANCED],
-    label_visibility="collapsed"
+    label_visibility="collapsed",
 )
 st.sidebar.divider()
 
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB: WELCOME PAGE
+# WELCOME
 # ═══════════════════════════════════════════════════════════════════════════════
 if active_tab == TAB_WELCOME:
     st.markdown(
@@ -40,62 +41,67 @@ if active_tab == TAB_WELCOME:
         "It provides support for files through both local file paths and remote URLs.\n\n"
         "Choose a mode in the sidebar to see how you can use igv-streamlit to embed IGV in your genomics apps!\n\n"
         "Brought to you by [MalariaGEN](https://www.malariagen.net/).",
-        text_alignment = "center"
+        text_alignment="center",
     )
 
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB: IGV.JS'S BUILT-IN HG19 DEMO
+# BUILT-IN HG19 DEMO
 # ═══════════════════════════════════════════════════════════════════════════════
 elif active_tab == TAB_BUILTIN:
     st.sidebar.subheader("Configurations")
-    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 400, 50, key = "builtin_height")
-    locus = st.sidebar.text_input("Locus", "chr22:24,376,166-24,376,456", key = "builtin_locus")
+    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 400, 50, key="builtin_height")
 
     st.markdown(
-        "Here we access IGV's classic hg19 demo via URL. The usual interactive features of IGV are available. ",
-        text_alignment = "center"
+        "Here we access IGV's hg19 demo via URL. All the usual interactive features of IGV are available. "
+        "Note the fullscreen button in the top-right.",
+        text_alignment="center",
     )
 
     st_igv.browser(
-        genome = "hg19",
-        locus = locus,
-        tracks = [
+        genome="hg19",
+        locus="chr22:24,376,166-24,376,456",
+        tracks=[
             {
-                "name"    : "NA12878 - chr22 (demo)",
-                "url"     : "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam",
+                "name":     "NA12878 - chr22 (demo)",
+                "url":      "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam",
                 "indexURL": "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam.bai",
-                "format"  : "bam",
-                "type"    : "alignment",
+                "format":   "bam",
+                "type":     "alignment",
             }
         ],
-        height = browser_height,
-        key = "builtin_demo",
+        height=browser_height,
+        key="builtin_demo",
     )
 
-    with st.popover("Click to peek at the Python code", width = "stretch", type = "primary"):
+    with st.popover("Click to peek at the Python code", width="stretch", type="primary"):
         st.code(
             """
-from igv_streamlit import sigv
+import igv_streamlit as st_igv
 
-st_igv(
-    genome="hg19",
-    locus="chr22:24,376,166-24,376,456",
-    tracks=[{
-        "name": "NA12878",
-        "url": "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam",
-        "indexURL": "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam.bai",
-        "format": "bam",
-        "type": "alignment",
-    }],
+st_igv.browser(
+    genome = "hg19",
+    locus  = "chr22:24,376,166-24,376,456",
+    tracks = [
+        {
+            "name"    : "NA12878 - chr22 (demo)",
+            "url"     : "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam",
+            "indexURL": "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam.bai",
+            "format"  : "bam",
+            "type"    : "alignment",
+        }
+    ],
 )
 """,
-            language = "python",
+            language="python",
         )
 
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB: LOCAL FILES
+# LOCAL FILES
 # ═══════════════════════════════════════════════════════════════════════════════
 elif active_tab == TAB_LOCAL:
+    # Show you can do multiple files. Get a different BAM
     st.sidebar.subheader("Local files config")
     browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 500, 50, key="local_height")
 
@@ -108,51 +114,51 @@ elif active_tab == TAB_LOCAL:
         )
         st.stop()
 
-    st.sidebar.subheader("Reference")
-
-    fasta_files = [
+    fasta_files = sorted(
         f for f in os.listdir(DATA_DIR)
         if f.endswith((".fasta", ".fa", ".fna")) and not f.endswith(".fai")
-    ]
-    gff_files = [
+    )
+    gff_files = sorted(
         f for f in os.listdir(DATA_DIR)
         if f.endswith((".gff", ".gff3", ".gtf"))
-    ]
+    )
+    bam_files = sorted(
+        f for f in os.listdir(DATA_DIR)
+        if f.endswith((".bam", ".cram")) and not f.endswith((".bai", ".crai"))
+    )
 
-    selected_fasta = st.sidebar.selectbox("FASTA reference", fasta_files, key="local_fasta")
+    st.sidebar.subheader("Reference")
+    selected_fasta = st.sidebar.selectbox("FASTA reference", fasta_files, key="local_fasta") if fasta_files else None
     selected_gff   = st.sidebar.selectbox("Annotation (GFF)", gff_files, key="local_gff")
 
     st.sidebar.subheader("Alignment tracks")
+    selected_bams = st.sidebar.multiselect("BAM / CRAM files", bam_files, default=bam_files[:1], key="local_bams")
 
-    bam_files = [
-        f for f in os.listdir(DATA_DIR)
-        if f.endswith((".bam", ".cram")) and not f.endswith((".bai", ".crai"))
-    ]
-    selected_bams = st.sidebar.multiselect("BAM / CRAM files", bam_files, default=bam_files[1], key="local_bams")
-
-    locus = st.sidebar.text_input("Locus", "Pf3D7_01_v3:1-100000", key="local_locus")
+    locus = st.sidebar.text_input("Locus", "Pf3D7_07_v3:400,251-408,852", key="local_locus")
 
     st.subheader("Local files")
 
-    reference_config = None
-    if selected_fasta != "(none)":
-        fasta_path = os.path.join(DATA_DIR, selected_fasta)
-        fai_path   = fasta_path + ".fai"
-        reference_config = {
-            "fastaPath": fasta_path,
-            **({"indexPath": fai_path} if os.path.isfile(fai_path) else {}),
-            "name": selected_fasta,
-        }
+    if not fasta_files:
+        st.info("No FASTA files found in `local-data/`. Add a reference to enable the browser.")
+        st.stop()
+
+    fasta_path       = os.path.join(DATA_DIR, selected_fasta)
+    fai_path         = fasta_path + ".fai"
+    reference_config = {
+        "fastaPath": fasta_path,
+        "name":      selected_fasta,
+        **({"indexPath": fai_path} if os.path.isfile(fai_path) else {}),
+    }
 
     track_configs = []
 
-    if selected_gff != "(none)" and reference_config is not None:
+    if selected_gff != "(none)":
         track_configs.append({
-            "name": selected_gff,
-            "path": os.path.join(DATA_DIR, selected_gff),
-            "format": "gff3",
-            "type": "annotation",
-            "displayMode": "EXPANDED",
+            "name":             selected_gff,
+            "path":             os.path.join(DATA_DIR, selected_gff),
+            "format":           "gff3",
+            "type":             "annotation",
+            "displayMode":      "EXPANDED",
             "visibilityWindow": 500_000,
         })
 
@@ -161,47 +167,44 @@ elif active_tab == TAB_LOCAL:
         fmt      = "cram" if bam.endswith(".cram") else "bam"
         idx_ext  = ".crai" if fmt == "cram" else ".bai"
         idx_path = bam_path + idx_ext
-        track = {
-            "name": bam,
-            "path": bam_path,
+        track    = {
+            "name":   bam,
+            "path":   bam_path,
             "format": fmt,
-            "type": "alignment",
+            "type":   "alignment",
         }
         if os.path.isfile(idx_path):
             track["indexPath"] = idx_path
-        if fmt == "cram" and reference_config:
+        if fmt == "cram":
             track["sourceType"] = "file"
         track_configs.append(track)
 
-    if not reference_config:
-        st.info("Select a FASTA reference in the sidebar to enable the browser.")
-    else:
-        st_igv.browser(
-            reference=reference_config,
-            locus=locus or None,
-            tracks=track_configs if track_configs else None,
-            height=browser_height,
-            key="local_browser",
-        )
+    st_igv.browser(
+        reference=reference_config,
+        locus=locus or None,
+        tracks=track_configs if track_configs else None,
+        height=browser_height,
+        key="local_browser",
+    )
 
     with st.expander("Python code (generated)"):
         st.code(
             f"""
-from igv_streamlit import st_igv
+import igv_streamlit as st_igv
 
-st_igv(
-    reference={
+st_igv.browser(
+    reference={{
         "fastaPath": "local-data/{selected_fasta}",
         "indexPath": "local-data/{selected_fasta}.fai",
-        "name": "{selected_fasta}",
-    },
+        "name":      "{selected_fasta}",
+    }},
     locus="{locus}",
     tracks=[{{
-        "name": "PF0833-C",
+        "name":      "PF0833-C",
         "path":      "local-data/PF0833-C.filtered.cram",
         "indexPath": "local-data/PF0833-C.filtered.cram.crai",
-        "format": "cram",
-        "type": "alignment",
+        "format":    "cram",
+        "type":      "alignment",
     }}],
 )
 """,
@@ -210,13 +213,13 @@ st_igv(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB: REMOTE PF8-RELEASE FILES
+# REMOTE PF8-RELEASE
 # ═══════════════════════════════════════════════════════════════════════════════
-elif active_tab == "Remote PF8-release":
+elif active_tab == TAB_REMOTE:
     st.sidebar.subheader("Remote PF8 config")
     browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 500, 50, key="remote_height")
-    locus = st.sidebar.text_input("Locus", "Pf3D7_01_v3:1-100000", key="remote_locus")
-    sample_id = st.sidebar.text_input("Sample ID", "PF0833-C", key="remote_sample")
+    locus          = st.sidebar.text_input("Locus", "Pf3D7_01_v3:1-100000", key="remote_locus")
+    sample_id      = st.sidebar.text_input("Sample ID", "PF0833-C", key="remote_sample")
 
     st.subheader("Remote PF8-release files (Sanger COG bucket)")
     st.write(
@@ -229,32 +232,33 @@ elif active_tab == "Remote PF8-release":
     st_igv.browser(
         reference={
             "fastaURL": f"{BASE}/reference/PlasmoDB-54-Pfalciparum3D7-Genome.fasta",
-            "name": "PlasmoDB-54 Pf3D7",
+            "name":     "PlasmoDB-54 Pf3D7",
         },
         locus=locus or None,
         tracks=[
             {
-                "name": "Annotation",
-                "url": f"{BASE}/annotations/PlasmoDB-55_Pfalciparum3D7.gff.gz",
-                "format": "gff3",
-                "type": "annotation",
-                "displayMode": "EXPANDED",
+                "name":             "Annotation",
+                "url":              f"{BASE}/annotations/PlasmoDB-55_Pfalciparum3D7.gff.gz",
+                "format":           "gff3",
+                "type":             "annotation",
+                "displayMode":      "EXPANDED",
                 "visibilityWindow": 500_000,
             },
             {
-                "name": sample_id,
+                "name":     sample_id,
                 "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram",
                 "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram.crai",
-                "format": "cram",
-                "type": "alignment",
+                "format":   "cram",
+                "type":     "alignment",
             },
         ],
         height=browser_height,
         key="remote_browser",
     )
 
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB: ADVANCED CONFIG
+# ADVANCED CONFIG
 # ═══════════════════════════════════════════════════════════════════════════════
 elif active_tab == TAB_ADVANCED:
     st.sidebar.subheader("Advanced config")
@@ -281,18 +285,16 @@ elif active_tab == TAB_ADVANCED:
         "as JSON. Use `url`/`indexURL` for remote files."
     )
 
-    import json
-
     try:
         config_dict = json.loads(raw)
     except json.JSONDecodeError as exc:
         st.error(f"Invalid JSON: {exc}")
         st.stop()
 
-    genome    = config_dict.pop("genome", None)
+    genome    = config_dict.pop("genome",    None)
     reference = config_dict.pop("reference", None)
-    locus     = config_dict.pop("locus", None)
-    tracks    = config_dict.pop("tracks", None)
+    locus     = config_dict.pop("locus",     None)
+    tracks    = config_dict.pop("tracks",    None)
 
     st_igv.browser(
         genome=genome,
