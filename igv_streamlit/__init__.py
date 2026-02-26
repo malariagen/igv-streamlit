@@ -1,3 +1,5 @@
+# __init__.py
+
 """
 igv-streamlit
 =============
@@ -419,7 +421,7 @@ def _build_igv_config(
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def igv_browser(
+def browser(
     genome: str | dict | None = None,
     *,
     reference: dict | None = None,
@@ -466,7 +468,7 @@ def igv_browser(
     --------
     **Built-in genome + remote BAM:**
 
-    >>> igv_browser(
+    >>> st_igv(
     ...     genome="hg38",
     ...     locus="BRCA1",
     ...     tracks=[{
@@ -479,7 +481,7 @@ def igv_browser(
 
     **Custom FASTA + local CRAM:**
 
-    >>> igv_browser(
+    >>> st_igv(
     ...     reference={
     ...         "fastaPath": "/data/genome.fasta",
     ...         "indexPath": "/data/genome.fasta.fai",
@@ -508,5 +510,5 @@ def igv_browser(
     return result
 
 
-# convenience re-export so users can do: from igv_streamlit import igv_browser
-__all__ = ["igv_browser"]
+# convenience re-export so users can do: from igv_streamlit import st_igv
+__all__ = ["st_igv"]

@@ -1,9 +1,4 @@
-"""
-app.py - demonstration of the igv-streamlit component.
-
-Run with:
-    streamlit run app.py
-"""
+# app.py
 
 import os
 import streamlit as st
@@ -18,64 +13,71 @@ st.set_page_config(
     layout     = "wide"
 )
 
-st.title("igv-streamlit", text_alignment="center")
-st.caption(
-    "An unofficial Streamlit component for embedding the igv.js genome browser. "
-    "Brought to you by [MalariaGEN](https://www.malariagen.net/). "
-    "Powered by [igv.js](https://github.com/igvteam/igv.js)",
-    text_alignment="center"
-)
+st.logo("assets/igv-streamlit-logo.png", size = "large")
+st.title("igv-streamlit", text_alignment = "center")
 st.divider()
 
-st.sidebar.header("Modes of operation")
+# ─ Tab selection in sidebar (controls which content + config to show) ──────────
+st.sidebar.subheader("Navigation")
+TAB_WELCOME = "Welcome page"
+TAB_BUILTIN = "igv.js's built-in hg19 demo"
+TAB_LOCAL   = "Local files"
+TAB_REMOTE  = "Remote PF8-release"
+TAB_ADVANCED = "Advanced config"
 
-MODE_BUILTIN  = "Built-in genome (hg19 demo)"
-MODE_LOCAL    = "Local files (data/ directory)"
-MODE_REMOTE   = "Remote PF8-release files"
-MODE_ADVANCED = "Advanced / manual config"
-
-mode = st.sidebar.radio(
-    "Data source",
-    [MODE_BUILTIN, MODE_LOCAL, MODE_REMOTE, MODE_ADVANCED],
+active_tab = st.sidebar.radio("Select mode",
+    [TAB_WELCOME, TAB_BUILTIN, TAB_LOCAL, TAB_REMOTE, TAB_ADVANCED],
+    label_visibility="collapsed"
 )
-
-browser_height = st.sidebar.slider("Browser height (px)", 300, 900, 500, 50)
-
+st.sidebar.divider()
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# MODE 1 – built-in hg19 demo
+# TAB: WELCOME PAGE
 # ═══════════════════════════════════════════════════════════════════════════════
-if mode == MODE_BUILTIN:
-    st.subheader("Built-in genome demo (hg19)")
-    st.write(
-        "Uses IGV's hosted hg19 reference with a public BAM file from Broad Institute. "
-        "No local data required."
+if active_tab == TAB_WELCOME:
+    st.markdown(
+        "igv-streamlit is an unofficial Streamlit component for embedding the [IGV](https://igv.org/) genome browser into your Streamlit apps.\n\n"
+        "It provides support for files through both local file paths and remote URLs.\n\n"
+        "Choose a mode in the sidebar to see how you can use igv-streamlit to embed IGV in your genomics apps!\n\n"
+        "Brought to you by [MalariaGEN](https://www.malariagen.net/).",
+        text_alignment = "center"
     )
 
-    locus = st.text_input("Locus", "chr22:24,376,166-24,376,456")
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB: IGV.JS'S BUILT-IN HG19 DEMO
+# ═══════════════════════════════════════════════════════════════════════════════
+elif active_tab == TAB_BUILTIN:
+    st.sidebar.subheader("Configurations")
+    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 400, 50, key = "builtin_height")
+    locus = st.sidebar.text_input("Locus", "chr22:24,376,166-24,376,456", key = "builtin_locus")
 
-    st_igv.igv_browser(
-        genome="hg19",
-        locus=locus,
-        tracks=[
+    st.markdown(
+        "Here we access IGV's classic hg19 demo via URL. The usual interactive features of IGV are available. ",
+        text_alignment = "center"
+    )
+
+    st_igv.browser(
+        genome = "hg19",
+        locus = locus,
+        tracks = [
             {
-                "name": "NA12878 – chr22 (demo)",
-                "url": "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam",
+                "name"    : "NA12878 - chr22 (demo)",
+                "url"     : "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam",
                 "indexURL": "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam.bai",
-                "format": "bam",
-                "type": "alignment",
+                "format"  : "bam",
+                "type"    : "alignment",
             }
         ],
-        height=browser_height,
-        key="builtin_demo",
+        height = browser_height,
+        key = "builtin_demo",
     )
 
-    with st.expander("Python code"):
+    with st.popover("Click to peek at the Python code", width = "stretch", type = "primary"):
         st.code(
             """
-import igv_streamlit as sigv
+from igv_streamlit import sigv
 
-sigv.igv_browser(
+st_igv(
     genome="hg19",
     locus="chr22:24,376,166-24,376,456",
     tracks=[{
@@ -87,21 +89,21 @@ sigv.igv_browser(
     }],
 )
 """,
-            language="python",
+            language = "python",
         )
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
-# MODE 2 – local data/ directory
+# TAB: LOCAL FILES
 # ═══════════════════════════════════════════════════════════════════════════════
-elif mode == MODE_LOCAL:
-    st.subheader("Local files")
+elif active_tab == TAB_LOCAL:
+    st.sidebar.subheader("Local files config")
+    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 500, 50, key="local_height")
 
     DATA_DIR = os.path.join(os.path.dirname(__file__), "local-data")
 
     if not os.path.isdir(DATA_DIR):
         st.error(
-            f"No `data/` directory found at `{DATA_DIR}`. "
+            f"No `local-data/` directory found at `{DATA_DIR}`. "
             "Please create it and add your genomic files."
         )
         st.stop()
@@ -117,8 +119,8 @@ elif mode == MODE_LOCAL:
         if f.endswith((".gff", ".gff3", ".gtf"))
     ]
 
-    selected_fasta = st.sidebar.selectbox("FASTA reference", ["(none)"] + fasta_files)
-    selected_gff   = st.sidebar.selectbox("Annotation (GFF)", ["(none)"] + gff_files)
+    selected_fasta = st.sidebar.selectbox("FASTA reference", fasta_files, key="local_fasta")
+    selected_gff   = st.sidebar.selectbox("Annotation (GFF)", gff_files, key="local_gff")
 
     st.sidebar.subheader("Alignment tracks")
 
@@ -126,9 +128,11 @@ elif mode == MODE_LOCAL:
         f for f in os.listdir(DATA_DIR)
         if f.endswith((".bam", ".cram")) and not f.endswith((".bai", ".crai"))
     ]
-    selected_bams = st.sidebar.multiselect("BAM / CRAM files", bam_files, default=bam_files[:1])
+    selected_bams = st.sidebar.multiselect("BAM / CRAM files", bam_files, default=bam_files[1], key="local_bams")
 
-    locus = st.text_input("Locus", "Pf3D7_01_v3:1-100000")
+    locus = st.sidebar.text_input("Locus", "Pf3D7_01_v3:1-100000", key="local_locus")
+
+    st.subheader("Local files")
 
     reference_config = None
     if selected_fasta != "(none)":
@@ -172,7 +176,7 @@ elif mode == MODE_LOCAL:
     if not reference_config:
         st.info("Select a FASTA reference in the sidebar to enable the browser.")
     else:
-        st_igv.igv_browser(
+        st_igv.browser(
             reference=reference_config,
             locus=locus or None,
             tracks=track_configs if track_configs else None,
@@ -183,19 +187,19 @@ elif mode == MODE_LOCAL:
     with st.expander("Python code (generated)"):
         st.code(
             f"""
-import igv_streamlit as sigv
+from igv_streamlit import st_igv
 
-sigv.igv_browser(
-    reference={{
-        "fastaPath": "data/{selected_fasta}",
-        "indexPath": "data/{selected_fasta}.fai",
+st_igv(
+    reference={
+        "fastaPath": "local-data/{selected_fasta}",
+        "indexPath": "local-data/{selected_fasta}.fai",
         "name": "{selected_fasta}",
-    }},
+    },
     locus="{locus}",
     tracks=[{{
         "name": "PF0833-C",
-        "path":      "data/PF0833-C.filtered.cram",
-        "indexPath": "data/PF0833-C.filtered.cram.crai",
+        "path":      "local-data/PF0833-C.filtered.cram",
+        "indexPath": "local-data/PF0833-C.filtered.cram.crai",
         "format": "cram",
         "type": "alignment",
     }}],
@@ -206,9 +210,14 @@ sigv.igv_browser(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# MODE 3 – remote PF8-release files
+# TAB: REMOTE PF8-RELEASE FILES
 # ═══════════════════════════════════════════════════════════════════════════════
-elif mode == MODE_REMOTE:
+elif active_tab == "Remote PF8-release":
+    st.sidebar.subheader("Remote PF8 config")
+    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 500, 50, key="remote_height")
+    locus = st.sidebar.text_input("Locus", "Pf3D7_01_v3:1-100000", key="remote_locus")
+    sample_id = st.sidebar.text_input("Sample ID", "PF0833-C", key="remote_sample")
+
     st.subheader("Remote PF8-release files (Sanger COG bucket)")
     st.write(
         "Streams CRAM/FASTA/GFF directly from "
@@ -217,10 +226,7 @@ elif mode == MODE_REMOTE:
 
     BASE = "https://pf8-release.cog.sanger.ac.uk"
 
-    locus     = st.text_input("Locus", "Pf3D7_01_v3:1-100000")
-    sample_id = st.text_input("Sample ID", "PF0833-C")
-
-    st_igv.igv_browser(
+    st_igv.browser(
         reference={
             "fastaURL": f"{BASE}/reference/PlasmoDB-54-Pfalciparum3D7-Genome.fasta",
             "name": "PlasmoDB-54 Pf3D7",
@@ -248,14 +254,11 @@ elif mode == MODE_REMOTE:
     )
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# MODE 4 – advanced / paste raw JSON config
+# TAB: ADVANCED CONFIG
 # ═══════════════════════════════════════════════════════════════════════════════
-elif mode == MODE_ADVANCED:
-    st.subheader("Advanced – paste a raw IGV config")
-    st.write(
-        "Paste any valid [igv.js browser config](https://github.com/igvteam/igv.js/wiki/Browser-Configuration) "
-        "as JSON. Use `url`/`indexURL` for remote files."
-    )
+elif active_tab == TAB_ADVANCED:
+    st.sidebar.subheader("Advanced config")
+    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 500, 50, key="advanced_height")
 
     default_config = """{
   "genome": "hg38",
@@ -270,7 +273,13 @@ elif mode == MODE_ADVANCED:
   ]
 }"""
 
-    raw = st.text_area("IGV config (JSON)", default_config, height=260)
+    raw = st.sidebar.text_area("IGV config (JSON)", default_config, height=260, key="advanced_config")
+
+    st.subheader("Advanced – paste a raw IGV config")
+    st.write(
+        "Paste any valid [igv.js browser config](https://github.com/igvteam/igv.js/wiki/Browser-Configuration) "
+        "as JSON. Use `url`/`indexURL` for remote files."
+    )
 
     import json
 
@@ -285,7 +294,7 @@ elif mode == MODE_ADVANCED:
     locus     = config_dict.pop("locus", None)
     tracks    = config_dict.pop("tracks", None)
 
-    st_igv.igv_browser(
+    st_igv.browser(
         genome=genome,
         reference=reference,
         locus=locus,
@@ -294,12 +303,3 @@ elif mode == MODE_ADVANCED:
         key="advanced_browser",
         **config_dict,
     )
-
-
-# ── footer ────────────────────────────────────────────────────────────────────
-st.divider()
-st.caption(
-    "igv-streamlit wraps [igv.js](https://github.com/igvteam/igv.js) "
-    "using Streamlit's v2 component API. Local files are served via a "
-    "built-in CORS HTTP server running on localhost."
-)
