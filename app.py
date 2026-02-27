@@ -12,17 +12,22 @@ st.set_page_config(
     layout     = "wide"
 )
 
-
+import streamlit as st
 import pathlib
+from streamlit import config as st_config
 
-fasta_path = pathlib.Path(st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"))
-fai_path   = fasta_path.with_suffix(".fasta.fai")
+st.write("enableStaticServing:", st_config.get_option("server.enableStaticServing"))
 
-st.write("FASTA size:", fasta_path.stat().st_size, "bytes")
-st.write("FAI size:",   fai_path.stat().st_size,   "bytes")
-st.code(fai_path.read_text())   # shows chromosome names + lengths
+static_dir = pathlib.Path(__file__).parent / "static"
+st.write("static dir:", str(static_dir))
+st.write("exists:", static_dir.exists())
 
+if static_dir.exists():
+    for f in sorted(static_dir.iterdir()):
+        size = f.stat().st_size if not f.is_symlink() else "SYMLINK"
+        st.write(f"`{f.name}` — size: `{size}`")
 
+        
 st.logo("assets/igv-streamlit-logo.png", size="large")
 st.title("igv-streamlit", text_alignment="center")
 st.divider()
