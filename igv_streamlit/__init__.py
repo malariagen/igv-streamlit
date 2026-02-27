@@ -91,7 +91,7 @@ export default function(component) {
             const token = parts[2];
             return isLocal
                 ? `http://127.0.0.1:${port}/file/${token}`
-                : `/_igv_streamlit/file/${token}`;
+                : `/app/static/${token}`;
         }
         return obj;
     }
