@@ -286,7 +286,6 @@ st_igv.browser(
 # ═══════════════════════════════════════════════════════════════════════════════
 elif active_tab == TAB_ADVANCED:
     st.sidebar.subheader("Configurations")
-    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 600, 50, key="advanced_height")
 
     BASE_FASTA = "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"
     BASE_GFF   = "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-55_Pfalciparum3D7.gff"
@@ -305,72 +304,102 @@ elif active_tab == TAB_ADVANCED:
     }
 
     LOCI = {
-        "Pf3D7_07_v3 — CRT region":  "Pf3D7_07_v3:403,601-403,639",
-        "Pf3D7_04_v3 — DHFR":          "Pf3D7_04_v3:748,200-749,900",
-        "Pf3D7_05_v3 — MDR1":          "Pf3D7_05_v3:957,890-962,000",
+        "CRT":  "Pf3D7_07_v3:403,581-403,659",
+        "DHFR": "Pf3D7_04_v3:748,200-749,900",
+        "MDR1": "Pf3D7_05_v3:957,890-962,000",
     }
 
     st.markdown(
-        "This example shows how standard Streamlit widgets can drive an `igv-streamlit` browser. "
-        "Choose samples and a locus below, then open the browser in a dialog.",
-        text_alignment="center",
+        "This page demonstrates how you can integrate Streamlit's UI elements with IGV's configuration to build a custom browser interface.\n\n"
     )
 
-    col1, col2 = st.columns(2)
-
-    with col1:
-        selected_samples = st.multiselect(
-            "Samples",
-            list(SAMPLES.keys()),
-            default=list(SAMPLES.keys())[:1],
-            key="adv_samples",
-        )
-        show_annotations = st.toggle("Show GFF annotations", value=True, key="adv_gff")
-
-    with col2:
-        locus_label = st.selectbox("Locus", list(LOCI.keys()), key="adv_locus")
-        display_mode = st.select_slider(
-            "Annotation display mode",
-            options=["COLLAPSED", "EXPANDED", "SQUISHED"],
-            value="EXPANDED",
-            key="adv_display",
-            disabled=not show_annotations,
-        )
-
-    # ── Build config from widget state ────────────────────────────────────────
-    tracks = []
-
-    if show_annotations:
-        tracks.append({
-            "name":        "GFF annotations",
-            "url":         BASE_GFF,
-            "format":      "gff3",
-            "type":        "annotation",
-            "displayMode": display_mode,
-        })
-
-    for name in selected_samples:
-        tracks.append({
-            "name": name,
-            "type": "alignment",
-            **SAMPLES[name],
-        })
-
-    igv_kwargs = dict(
-        reference={"fastaURL": BASE_FASTA},
-        locus=LOCI[locus_label],
-        tracks=tracks,
-        height=browser_height,
-        key="advanced_browser",
-    )
-
-    # ── Dialog ────────────────────────────────────────────────────────────────
-    @st.dialog("IGV Genome Browser")
+    @st.dialog("IGV Genome Browser", width="large")
     def show_browser():
-        st_igv.browser(**igv_kwargs)
+        # ── Sample & locus ────────────────────────────────────────────────────
+        selected_sample = st.radio(
+            "Sample",
+            list(SAMPLES.keys()),
+            horizontal=True,
+            key="adv_sample",
+        )
 
-    if not selected_samples:
-        st.warning("Select at least one sample to open the browser.")
-    else:
-        if st.button("Open IGV browser", type="primary", icon="🧬"):
-            show_browser()
+        locus_label = st.pills(
+            "Locus",
+            list(LOCI.keys()),
+            default="CRT",
+            key="adv_locus",
+        )
+
+        st.divider()
+
+        # ── Options: toggles left, sliders right ──────────────────────────────
+        col_toggles, col_sliders = st.columns([1, 2])
+
+        with col_toggles:
+            show_annotations = st.toggle(
+                "GFF annotations", value=True, key="adv_gff"
+            )
+            display_mode = st.select_slider(
+                "Annotation mode",
+                options=["COLLAPSED", "EXPANDED", "SQUISHED"],
+                value="EXPANDED",
+                key="adv_display",
+                disabled=not show_annotations,
+            )
+            view_as_pairs = st.toggle(
+                "View as pairs",
+                value=False,
+                key="adv_pairs",
+                help="Draw paired reads connected by a line spanning the insert.",
+            )
+
+        with col_sliders:
+            browser_height = st.slider(
+                "Browser height (px)", 400, 1200, 600, 50,
+                key="advanced_height",
+            )
+            track_height = st.slider(
+                "Track height (px)", 50, 500, 200, 25,
+                key="adv_track_height",
+                help="Total height of the alignment track panel.",
+            )
+            alignment_row_height = st.slider(
+                "Read row height (px)", 4, 30, 14, 1,
+                key="adv_row_height",
+                help="Height per read row in EXPANDED/FULL mode (alignmentRowHeight).",
+            )
+
+        # ── Build config & render ─────────────────────────────────────────────
+        tracks = []
+
+        if show_annotations:
+            tracks.append({
+                "name":        "GFF annotations",
+                "url":         BASE_GFF,
+                "format":      "gff3",
+                "type":        "annotation",
+                "displayMode": display_mode,
+            })
+
+        tracks.append({
+            "name":               selected_sample,
+            "type":               "alignment",
+            "viewAsPairs":        view_as_pairs,
+            "height":             track_height,
+            "alignmentRowHeight": alignment_row_height,
+            "squishedRowHeight":  max(2, alignment_row_height // 4),
+            **SAMPLES[selected_sample],
+        })
+
+        st_igv.browser(
+            reference={
+                "fastaURL":      BASE_FASTA
+            },
+            locus=LOCI[locus_label],
+            tracks=tracks,
+            height=browser_height,
+            key="advanced_browser",
+        )
+
+    if st.button("Browse IGV", type="primary"):
+        show_browser()
