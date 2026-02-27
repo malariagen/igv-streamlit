@@ -104,13 +104,9 @@ export default function(component) {
     // Test-fetch the fastaURL to see what comes back
     const fastaUrl = config?.reference?.fastaURL;
     if (fastaUrl) {
-        console.log('FASTA URL:', fastaUrl);
-        fetch(fastaUrl, { headers: { 'Range': 'bytes=0-100' } })
-            .then(r => {
-                console.log('status:', r.status);
-                console.log('content-range:', r.headers.get('content-range')); // should show /23723411
-            })
-            .catch(e => console.error('fetch error:', e));
+        fetch(fastaUrl, { headers: { 'Range': 'bytes=0-4270' } })
+            .then(r => r.text())
+            .then(text => console.log('FASTA content:', JSON.stringify(text.slice(0, 500))));
     }
 
     const configJson = JSON.stringify(config);
