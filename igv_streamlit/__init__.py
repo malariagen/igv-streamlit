@@ -12,7 +12,7 @@ Basic usage
 -----------
 >>> import igv_streamlit as st_igv
 >>>
->>> st_igv.igv_browser(
+>>> st_igv.browser(
 ...     genome="hg38",
 ...     locus="chr1:1,000,000-1,100,000",
 ...     tracks=[
@@ -30,7 +30,7 @@ Local file usage
 Use ``path`` / ``indexPath`` / ``fastaPath`` instead of ``url`` / ``indexURL`` / ``fastaURL``
 when pointing to files on the local filesystem:
 
->>> st_igv.igv_browser(
+>>> st_igv.browser(
 ...     reference={
 ...         "fastaPath": "/data/ref.fasta",
 ...         "cytobandPath": "/data/ref.cytoband",
@@ -49,6 +49,8 @@ when pointing to files on the local filesystem:
 from __future__ import annotations
 
 import copy
+import os
+import inspect
 from typing import Any
 
 import streamlit as st
@@ -420,6 +422,34 @@ def _build_igv_config(
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+def resolve_path(path: str) -> str:
+    """
+    Path resolution
+    ---------------
+    Paths passed via ``path`` / ``indexPath`` / ``fastaPath`` etc. are resolved
+    relative to Python's current working directory (i.e. where you launched
+    Streamlit from). If your data files live next to your script and you want
+    paths relative to the script instead, use :func:`resolve_path`:
+
+    >>> st_igv.browser(
+    ...     reference={
+    ...         "fastaPath": st_igv.resolve_path("data/ref.fasta"),
+    ...     },
+    ...     tracks=[{
+    ...         "name": "My CRAM",
+    ...         "path": st_igv.resolve_path("data/sample.cram"),
+    ...         "indexPath": st_igv.resolve_path("data/sample.cram.crai"),
+    ...         "type": "alignment",
+    ...     }],
+    ... )
+
+    Absolute paths always work without ``resolve_path``.
+    """
+    if os.path.isabs(path):
+        return path
+    caller_dir = os.path.dirname(os.path.abspath(inspect.stack()[1].filename))
+    return os.path.join(caller_dir, path)
+
 
 def browser(
     genome: str | dict | None = None,
