@@ -187,9 +187,16 @@ def register_file(file_path: str) -> str:
 
     # Symlink into static/ so Streamlit's static handler can serve it on cloud
     _STATIC_DIR.mkdir(exist_ok=True)
-    link = _STATIC_DIR / token
-    if not link.exists():
-        link.symlink_to(file_path)
+    dest = _STATIC_DIR / token
+    if not dest.exists():
+        try:
+            dest.symlink_to(file_path)
+            dest.stat()  # raises if symlink target is not followable (Streamlit Cloud)
+        except OSError:
+            if dest.is_symlink():
+                dest.unlink()
+            import shutil
+            shutil.copy2(file_path, dest)
 
     return f"__igv__{port}__{token}"
 
