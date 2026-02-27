@@ -21,8 +21,8 @@ st.sidebar.subheader("Navigation")
 TAB_WELCOME  = "Welcome page"
 TAB_BUILTIN  = "igv.js's built-in hg19 demo"
 TAB_LOCAL    = "Local files"
-TAB_REMOTE   = "Remote PF8-release"
-TAB_ADVANCED = "Advanced config"
+TAB_REMOTE   = "Remote URLs"
+TAB_ADVANCED = "Integrating IGV with Streamlit"
 
 active_tab = st.sidebar.radio(
     "Select mode",
@@ -106,7 +106,7 @@ elif active_tab == TAB_LOCAL:
 
     st.markdown(
         "Here we load local genomic files using `path` and `indexPath` instead of `url` and `indexURL`.\n\n"
-        "Note, these demo files only cover a small region of the genome since they need to fit on the repo.\n\n"
+        "Note, these demo files only cover a small region of the genome since they need to fit on the repo, but you can use full-sized files.\n\n"
         "When using local file paths, we must resolve relative paths to absolute paths using `st_igv.resolve_path()`.\n\n"
         "`igv-streamlit` then serves them automatically via a built-in local file server. ",
         text_alignment="center",
@@ -166,7 +166,7 @@ st_igv.browser(
             "type":   "annotation",
         },
         {
-            "name":       "PF0883-C (Ghana, 2013)",
+            "name":       "PF0833-C (Ghana, 2013)",
             "path":       st_igv.resolve_path("local-data/PF0833-C.filtered.cram"),
             "indexPath":  st_igv.resolve_path("local-data/PF0833-C.filtered.cram.crai"),
             "format":     "cram",
@@ -189,14 +189,14 @@ st_igv.browser(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# REMOTE PF8-RELEASE
+# REMOTE URLS
 # ═══════════════════════════════════════════════════════════════════════════════
 elif active_tab == TAB_REMOTE:
     st.sidebar.subheader("Configurations")
-    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 500, 50, key="remote_height")
+    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 900, 50, key="remote_height")
 
     st.markdown(
-        "Streams CRAM/FASTA/GFF directly from ",
+        "Here, we stream CRAM/FASTA/GFF files directly from remote URLs over the internet, requiring no local files at all.\n\n",
         text_alignment = "center"
     )
 
@@ -217,6 +217,13 @@ elif active_tab == TAB_REMOTE:
                 "name":     "PF0833-C (Ghana, 2013)",
                 "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram",
                 "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram.crai",
+                "format":   "cram",
+                "type":     "alignment",
+            },
+            {
+                "name":     "SPT24175 (Cameroon, 2017)",
+                "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15632643/SPT24175.cram",
+                "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15632643/SPT24175.cram.crai",
                 "format":   "cram",
                 "type":     "alignment",
             },
