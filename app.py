@@ -1,5 +1,6 @@
+# app.py
+
 import os
-import json
 import streamlit as st
 
 import sys
@@ -108,20 +109,19 @@ elif active_tab == TAB_LOCAL:
     on_cloud = os.path.exists("/mount/src")
 
     st.markdown(
+        "**This section only works when running Streamlit locally** — for cloud deployments, use remote URLs instead.\n\n"
         "Here we load local genomic files using `path` and `indexPath` instead of `url` and `indexURL`.\n\n"
-        "When using local file paths, `igv-streamlit` serves them automatically via a built-in local file server.\n\n"
-        "**This only works when running Streamlit locally** — for cloud deployments, use remote URLs instead.",
+        "When using local file paths, `igv-streamlit` serves them automatically via a built-in local file server.",
         text_alignment="center",
     )
 
     if on_cloud:
         st.warning(
-            "This demo is running on Streamlit Cloud, which doesn't support local file serving. "
-            "Clone the repo and run `streamlit run app.py` locally to try this feature.",
-            icon="☁️",
+            "This demo is running on Streamlit Cloud, which doesn't support local file serving.\n\n"
+            "Clone the repo and run `streamlit run app.py` locally to try this feature.\n\n"
+            "You can still see the code for this demo by clicking the button below."
         )
     else:
-
         st_igv.browser(
             reference={
                 "fastaPath": st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"),
@@ -136,14 +136,14 @@ elif active_tab == TAB_LOCAL:
                     "type":   "annotation",
                 },
                 {
-                "name":       "PF0883-C (Ghana, 2013)",
+                "name":       "PF0883-C.cram (Ghana, 2013)",
                 "path":       st_igv.resolve_path("local-data/PF0833-C.filtered.cram"),
                 "indexPath":  st_igv.resolve_path("local-data/PF0833-C.filtered.cram.crai"),
                 "format":     "cram",
                 "type":       "alignment",
             },
             {
-                "name":      "SPT24175 (Cameroon, 2017)",
+                "name":      "SPT24175.bam (Cameroon, 2017)",
                 "path":      st_igv.resolve_path("local-data/SPT24175.filtered.bam"),
                 "indexPath": st_igv.resolve_path("local-data/SPT24175.filtered.bam.bai"),
                 "format":    "bam",
@@ -175,23 +175,21 @@ st_igv.browser(
             "format": "gff3",
             "type":   "annotation",
         },
-        {
-            "name":       "PF0833-C (Ghana, 2013)",
+        { # Note, we are browsing a CRAM file alongside a BAM file
+            "name":       "PF0833-C.cram (Ghana, 2013)",
             "path":       st_igv.resolve_path("local-data/PF0833-C.filtered.cram"),
             "indexPath":  st_igv.resolve_path("local-data/PF0833-C.filtered.cram.crai"),
             "format":     "cram",
             "type":       "alignment",
         },
         {
-            "name":      "SPT24175 (Cameroon, 2017)",
+            "name":      "SPT24175.bam (Cameroon, 2017)",
             "path":      st_igv.resolve_path("local-data/SPT24175.filtered.bam"),
             "indexPath": st_igv.resolve_path("local-data/SPT24175.filtered.bam.bai"),
             "format":    "bam",
             "type":      "alignment",
         }
-    ],
-    height = browser_height,
-    key    = "local_browser",
+    ]
 )
 """,
             language="python",
@@ -206,7 +204,8 @@ elif active_tab == TAB_REMOTE:
     browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 900, 50, key="remote_height")
 
     st.markdown(
-        "Here, we stream CRAM/FASTA/GFF files directly from remote URLs over the internet, requiring no local files at all.\n\n",
+        "Here, we stream CRAM/FASTA/GFF files directly from remote URLs over the internet.\n\n"
+        "This requires no local files at all and allows us to browse whole genomes.",
         text_alignment = "center"
     )
 
@@ -214,14 +213,13 @@ elif active_tab == TAB_REMOTE:
         reference={
             "fastaURL": "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta",
         },
-        locus = "Pf3D7_07_v3:400,000-410,000",
+        locus = "Pf3D7_07_v3:402,282-406,400",
         tracks=[
             {
-                "name":             "GFF annotation",
-                "url":              "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-55_Pfalciparum3D7.gff",
-                "format":           "gff3",
-                "type":             "annotation",
-                "displayMode":      "EXPANDED",
+                "name":        "GFF annotation",
+                "url":         "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-55_Pfalciparum3D7.gff",
+                "format":      "gff3",
+                "type":        "annotation",
             },
             {
                 "name":     "PF0833-C (Ghana, 2013)",
@@ -242,52 +240,137 @@ elif active_tab == TAB_REMOTE:
         key="remote_browser",
     )
 
+    with st.popover("Click to peek at the Python code", width="stretch", type="primary"):
+        st.code(
+            """
+import igv_streamlit as st_igv
+
+# If you see "Error accessing resource: http://127.0.0.1:xxxxx/file/xxxxxxxxxxx Status: 0",
+# this is usually due to intermittent outage of the remote server hosting the files. 
+# Try refreshing the page, or check the URLs are accessible in your browser.
+
+st_igv.browser(
+    reference={
+        "fastaURL": "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta",
+    },
+    locus = "Pf3D7_07_v3:401,500-406,500",
+    tracks=[
+        {
+            "name":        "GFF annotation",
+            "url":         "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-55_Pfalciparum3D7.gff",
+            "format":      "gff3",
+            "type":        "annotation",
+        },
+        {
+            "name":     "PF0833-C (Ghana, 2013)",
+            "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram",
+            "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram.crai",
+            "format":   "cram",
+            "type":     "alignment",
+        },
+        {
+            "name":     "SPT24175 (Cameroon, 2017)",
+            "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15632643/SPT24175.cram",
+            "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15632643/SPT24175.cram.crai",
+            "format":   "cram",
+            "type":     "alignment",
+        },
+    ],
+)
+""",
+            language = "python",
+        )
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ADVANCED CONFIG
 # ═══════════════════════════════════════════════════════════════════════════════
 elif active_tab == TAB_ADVANCED:
-    st.sidebar.subheader("Advanced config")
-    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 500, 50, key="advanced_height")
+    st.sidebar.subheader("Configurations")
+    browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 600, 50, key="advanced_height")
 
-    default_config = """{
-  "genome": "hg38",
-  "locus": "BRCA1",
-  "tracks": [
-    {
-      "name": "BRCA1 region",
-      "url": "https://s3.amazonaws.com/igv.org.test/data/gencode.v18.collapsed.bed",
-      "format": "bed",
-      "type": "annotation"
+    BASE_FASTA = "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"
+    BASE_GFF   = "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-55_Pfalciparum3D7.gff"
+
+    SAMPLES = {
+        "PF0833-C (Ghana, 2013)": {
+            "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram",
+            "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram.crai",
+            "format":   "cram",
+        },
+        "SPT24175 (Cameroon, 2017)": {
+            "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15632643/SPT24175.cram",
+            "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15632643/SPT24175.cram.crai",
+            "format":   "cram",
+        },
     }
-  ]
-}"""
 
-    raw = st.sidebar.text_area("IGV config (JSON)", default_config, height=260, key="advanced_config")
+    LOCI = {
+        "Pf3D7_07_v3 — CRT region":  "Pf3D7_07_v3:403,601-403,639",
+        "Pf3D7_04_v3 — DHFR":          "Pf3D7_04_v3:748,200-749,900",
+        "Pf3D7_05_v3 — MDR1":          "Pf3D7_05_v3:957,890-962,000",
+    }
 
-    st.subheader("Advanced – paste a raw IGV config")
-    st.write(
-        "Paste any valid [igv.js browser config](https://github.com/igvteam/igv.js/wiki/Browser-Configuration) "
-        "as JSON. Use `url`/`indexURL` for remote files."
+    st.markdown(
+        "This example shows how standard Streamlit widgets can drive an `igv-streamlit` browser. "
+        "Choose samples and a locus below, then open the browser in a dialog.",
+        text_alignment="center",
     )
 
-    try:
-        config_dict = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        st.error(f"Invalid JSON: {exc}")
-        st.stop()
+    col1, col2 = st.columns(2)
 
-    genome    = config_dict.pop("genome",    None)
-    reference = config_dict.pop("reference", None)
-    locus     = config_dict.pop("locus",     None)
-    tracks    = config_dict.pop("tracks",    None)
+    with col1:
+        selected_samples = st.multiselect(
+            "Samples",
+            list(SAMPLES.keys()),
+            default=list(SAMPLES.keys())[:1],
+            key="adv_samples",
+        )
+        show_annotations = st.toggle("Show GFF annotations", value=True, key="adv_gff")
 
-    st_igv.igv_browser(
-        genome=genome,
-        reference=reference,
-        locus=locus,
+    with col2:
+        locus_label = st.selectbox("Locus", list(LOCI.keys()), key="adv_locus")
+        display_mode = st.select_slider(
+            "Annotation display mode",
+            options=["COLLAPSED", "EXPANDED", "SQUISHED"],
+            value="EXPANDED",
+            key="adv_display",
+            disabled=not show_annotations,
+        )
+
+    # ── Build config from widget state ────────────────────────────────────────
+    tracks = []
+
+    if show_annotations:
+        tracks.append({
+            "name":        "GFF annotations",
+            "url":         BASE_GFF,
+            "format":      "gff3",
+            "type":        "annotation",
+            "displayMode": display_mode,
+        })
+
+    for name in selected_samples:
+        tracks.append({
+            "name": name,
+            "type": "alignment",
+            **SAMPLES[name],
+        })
+
+    igv_kwargs = dict(
+        reference={"fastaURL": BASE_FASTA},
+        locus=LOCI[locus_label],
         tracks=tracks,
         height=browser_height,
         key="advanced_browser",
-        **config_dict,
     )
+
+    # ── Dialog ────────────────────────────────────────────────────────────────
+    @st.dialog("IGV Genome Browser")
+    def show_browser():
+        st_igv.browser(**igv_kwargs)
+
+    if not selected_samples:
+        st.warning("Select at least one sample to open the browser.")
+    else:
+        if st.button("Open IGV browser", type="primary", icon="🧬"):
+            show_browser()

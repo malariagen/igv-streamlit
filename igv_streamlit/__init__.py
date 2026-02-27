@@ -77,7 +77,6 @@ export default function(component) {
     const configJson = JSON.stringify(config);
     const height     = data.height || 500;
 
-    // ── Build DOM scaffold (idempotent across re-renders) ─────────────────────
     if (!parentElement._igvScaffold) {
 
         const outerContainer = document.createElement('div');
@@ -89,7 +88,6 @@ export default function(component) {
         const igvWrapper = document.createElement('div');
         igvWrapper.className = 'sigv-browser';
 
-        // ── Fullscreen-enter button ───────────────────────────────────────────
         const fsBtn = document.createElement('button');
         fsBtn.className = 'sigv-btn';
         fsBtn.title = 'Enter full screen';
@@ -103,7 +101,6 @@ export default function(component) {
             </svg>
             Full screen`;
 
-        // ── Fullscreen-exit button ────────────────────────────────────────────
         const exitBtn = document.createElement('button');
         exitBtn.className = 'sigv-btn';
         exitBtn.title = 'Exit full screen  (Esc)';
@@ -124,39 +121,106 @@ export default function(component) {
         outerContainer.appendChild(igvWrapper);
         parentElement.appendChild(outerContainer);
 
-        parentElement._igvScaffold = { outerContainer, igvWrapper, toolbar, fsBtn, exitBtn };
+        // Single source of truth for fullscreen state — stored on the scaffold
+        // so external code can inspect it, and used directly in this closure.
+        const scaffold = {
+            outerContainer, igvWrapper, toolbar, fsBtn, exitBtn,
+            isFullscreen: false,
+        };
+        parentElement._igvScaffold = scaffold;
 
-        let _isFullscreen = false;
+        let _fsOverlay   = null;
+        let _origParent  = null;
+        let _origSibling = null;
 
         const triggerIgvResize = () => {
             if (!igvWrapper._igvBrowser) return;
             window.dispatchEvent(new Event('resize'));
         };
 
+        // ── Fullscreen enter / exit ───────────────────────────────────────────
+        //
+        // Lesson learned through debugging: this JS runs directly in the page
+        // (frame depth = 0), so position:fixed on document.body covers the full
+        // viewport correctly.  The tricky part is that Streamlit's st.dialog
+        // injects stylesheets that override class-based CSS — even !important —
+        // changing display:flex to block and inflating inherited font sizes.
+        // Solution: stamp every layout-critical value as inline styles during
+        // fullscreen, then clear them on exit to restore the CSS classes.
+
+        // Shared inline style for the exit button.  Fully specified so that
+        // inherited font-size / padding from the dialog can't inflate it.
+        // Note: :hover and transition can't be set inline, so we add a one-off
+        // <style> rule scoped to a data attribute instead (see below).
+        const _BTN_INLINE =
+            'display:flex;align-items:center;gap:6px;' +
+            'padding:5px 12px;height:30px;box-sizing:border-box;' +
+            'font-size:13px;font-family:inherit;font-weight:500;line-height:1.2;' +
+            'border:1px solid rgba(128,128,128,0.35);border-radius:6px;' +
+            'background:rgba(255,255,255,0.88);backdrop-filter:blur(4px);' +
+            'color:#333;cursor:pointer;white-space:nowrap;' +
+            'box-shadow:0 1px 4px rgba(0,0,0,0.12);' +
+            'transition:background 0.15s,box-shadow 0.15s,transform 0.1s;';
+
         const enterFullscreen = () => {
-            _isFullscreen = true;
-            const pageBg = getComputedStyle(document.body).backgroundColor || '#fff';
-            outerContainer.style.position   = 'fixed';
-            outerContainer.style.top        = '0';
-            outerContainer.style.left       = '0';
-            outerContainer.style.width      = '100vw';
-            outerContainer.style.height     = '100vh';
-            outerContainer.style.zIndex     = '999999';
-            outerContainer.style.background = pageBg;
+            if (scaffold.isFullscreen) return;
+            scaffold.isFullscreen = true;
+
+            const pageBg = getComputedStyle(document.body).backgroundColor || '#ffffff';
+            _origParent  = outerContainer.parentNode;
+            _origSibling = outerContainer.nextSibling;
+
+            // Full-viewport backdrop
+            _fsOverlay = document.createElement('div');
+            _fsOverlay.style.cssText =
+                'position:fixed;top:0;left:0;width:100%;height:100%;' +
+                `background:${pageBg};z-index:2147483646;margin:0;padding:0;box-sizing:border-box;`;
+            document.body.appendChild(_fsOverlay);
+
+            // Move container into overlay; stamp layout inline to beat dialog CSS
+            _fsOverlay.appendChild(outerContainer);
+            outerContainer.style.cssText =
+                'position:fixed;top:0;left:0;width:100%;height:100%;' +
+                'z-index:2147483647;margin:0;padding:0;box-sizing:border-box;' +
+                'display:flex;flex-direction:column;';
+            outerContainer.style.setProperty('--sigv-height', '100vh');
+
+            toolbar.style.cssText =
+                'display:flex;flex-direction:row;align-items:center;' +
+                'justify-content:flex-end;flex-shrink:0;width:100%;' +
+                'height:40px;padding:0 8px;box-sizing:border-box;' +
+                'border-bottom:1px solid rgba(128,128,128,0.15);';
+
+            exitBtn.style.cssText = _BTN_INLINE;
+
             fsBtn.style.display   = 'none';
-            exitBtn.style.display = 'flex';
+            // display is already included in _BTN_INLINE, no need to set again
             requestAnimationFrame(triggerIgvResize);
         };
 
         const exitFullscreen = () => {
-            _isFullscreen = false;
-            outerContainer.style.position   = '';
-            outerContainer.style.top        = '';
-            outerContainer.style.left       = '';
-            outerContainer.style.width      = '';
-            outerContainer.style.height     = '';
-            outerContainer.style.zIndex     = '';
-            outerContainer.style.background = '';
+            if (!scaffold.isFullscreen) return;
+            scaffold.isFullscreen = false;
+
+            // Restore DOM position
+            if (_origParent) {
+                _origParent.insertBefore(outerContainer, _origSibling || null);
+            }
+
+            // Clear inline overrides — CSS classes take over again
+            outerContainer.style.cssText = '';
+            outerContainer.style.setProperty('--sigv-height', height + 'px');
+            toolbar.style.cssText  = '';
+            exitBtn.style.cssText  = '';
+
+            // Remove backdrop
+            if (_fsOverlay && _fsOverlay.parentNode) {
+                _fsOverlay.parentNode.removeChild(_fsOverlay);
+            }
+            _fsOverlay   = null;
+            _origParent  = null;
+            _origSibling = null;
+
             fsBtn.style.display   = 'flex';
             exitBtn.style.display = 'none';
             requestAnimationFrame(triggerIgvResize);
@@ -166,33 +230,37 @@ export default function(component) {
         exitBtn.addEventListener('click', exitFullscreen);
 
         const onKeyDown = (e) => {
-            if (e.key === 'Escape' && _isFullscreen) exitFullscreen();
+            if (e.key === 'Escape' && scaffold.isFullscreen) exitFullscreen();
         };
         document.addEventListener('keydown', onKeyDown);
 
-        parentElement._igvScaffold._cleanup = () => {
+        scaffold._cleanup = () => {
             document.removeEventListener('keydown', onKeyDown);
+            if (scaffold.isFullscreen) exitFullscreen();
         };
     }
 
     const { outerContainer, igvWrapper } = parentElement._igvScaffold;
 
-    outerContainer.style.setProperty('--sigv-height', height + 'px');
+    if (!parentElement._igvScaffold.isFullscreen) {
+        outerContainer.style.setProperty('--sigv-height', height + 'px');
+    }
 
-    // ── destroy prior browser ─────────────────────────────────────────────────
+    // ── IGV browser lifecycle ─────────────────────────────────────────────────
+
     const destroyBrowser = () => {
-        if (igvWrapper._igvBrowser && window.igv) {
-            try { igv.removeBrowser(igvWrapper._igvBrowser); } catch (_) {}
+        const browser = igvWrapper._igvBrowser;
+        if (browser && window.igv) {
+            try { window.igv.removeBrowser(browser); } catch (_) {}
             igvWrapper._igvBrowser    = null;
             igvWrapper._igvConfigJson = null;
             igvWrapper.innerHTML      = '';
         }
     };
 
-    // ── create browser ────────────────────────────────────────────────────────
     const createBrowser = () => {
         destroyBrowser();
-        igv.createBrowser(igvWrapper, config)
+        window.igv.createBrowser(igvWrapper, config)
             .then(browser => {
                 igvWrapper._igvBrowser    = browser;
                 igvWrapper._igvConfigJson = configJson;
@@ -224,40 +292,31 @@ export default function(component) {
         createBrowser();
     };
 
-    // ── load igv.js from CDN if needed, then launch ───────────────────────────
+    // ── igv.js loading — namespaced flag to avoid collisions between multiple
+    //    browser instances on the same page (plain window._igvScriptLoading
+    //    would be shared and could cause a race).
     if (window.igv) {
         launchIfNeeded();
-    } else if (window._igvScriptLoading) {
-        const deadline = Date.now() + 30_000;
-        const tid = setInterval(() => {
-            if (window.igv) {
-                clearInterval(tid);
-                launchIfNeeded();
-            } else if (Date.now() > deadline) {
-                clearInterval(tid);
-                window._igvScriptLoading = false;
+    } else if (window.__igvScriptPromise) {
+        window.__igvScriptPromise.then(launchIfNeeded);
+    } else {
+        window.__igvScriptPromise = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src     = data.igvJsUrl;
+            s.onload  = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+        window.__igvScriptPromise
+            .then(launchIfNeeded)
+            .catch(() => {
                 igvWrapper.innerHTML =
                     `<div style="color:red;padding:12px;font-family:monospace">
-                        Timed out waiting for igv.js to load.
+                        Failed to load igv.js from ${data.igvJsUrl}
                     </div>`;
-            }
-        }, 50);
-    } else {
-        window._igvScriptLoading = true;
-        const s = document.createElement('script');
-        s.src = data.igvJsUrl;
-        s.onload  = () => { window._igvScriptLoading = false; launchIfNeeded(); };
-        s.onerror = () => {
-            window._igvScriptLoading = false;
-            igvWrapper.innerHTML =
-                `<div style="color:red;padding:12px;font-family:monospace">
-                    Failed to load igv.js from ${data.igvJsUrl}
-                </div>`;
-        };
-        document.head.appendChild(s);
+            });
     }
 
-    // ── cleanup when component unmounts ───────────────────────────────────────
     return () => {
         destroyBrowser();
         if (parentElement._igvScaffold?._cleanup) {
@@ -286,6 +345,7 @@ _CSS = """
     padding:         0 8px;
     border-bottom:   1px solid rgba(128,128,128,0.15);
     background:      var(--st-background-color, #fff);
+    box-sizing:      border-box;
 }
 .sigv-browser {
     flex:       1;
@@ -310,6 +370,7 @@ _CSS = """
     transition:      background 0.15s, box-shadow 0.15s, transform 0.1s;
     box-shadow:      0 1px 4px rgba(0,0,0,0.12);
     white-space:     nowrap;
+    box-sizing:      border-box;
 }
 .sigv-btn svg {
     width:       15px;
