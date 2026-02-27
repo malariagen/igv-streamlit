@@ -97,6 +97,27 @@ export default function(component) {
     }
 
     const config     = resolveUrls(data.config);
+
+    // DEBUG — remove before release
+    console.log('IGV resolved config:', JSON.stringify(config, null, 2));
+
+    // Test-fetch the fastaURL to see what comes back
+    const fastaUrl = config?.reference?.fastaURL;
+    if (fastaUrl) {
+        console.log('Fetching FASTA URL:', fastaUrl);
+        fetch(fastaUrl, { 
+            method: 'GET',
+            headers: { 'Range': 'bytes=0-100' }
+        })
+        .then(r => {
+            console.log('FASTA range request status:', r.status);  // need 206, not 200
+            console.log('Accept-Ranges:', r.headers.get('accept-ranges'));
+            console.log('Content-Range:', r.headers.get('content-range'));
+            console.log('Content-Length:', r.headers.get('content-length'));
+        })
+        .catch(e => console.error('FASTA fetch failed:', e));
+    }
+
     const configJson = JSON.stringify(config);
     const height     = data.height || 500;
 

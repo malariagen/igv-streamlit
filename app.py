@@ -12,6 +12,22 @@ st.set_page_config(
     layout     = "wide"
 )
 
+
+import pathlib, os, requests
+
+st.subheader("🐛 Debug")
+
+static_dir = pathlib.Path(__file__).parent / "static"
+st.write("static dir:", str(static_dir))
+st.write("static dir exists:", static_dir.exists())
+
+if static_dir.exists():
+    for e in sorted(static_dir.iterdir()):
+        target = os.readlink(e) if e.is_symlink() else "not a symlink"
+        target_exists = os.path.exists(target) if e.is_symlink() else "n/a"
+        st.write(f"`{e.name}` → `{target}` | target exists: `{target_exists}`")
+
+        
 st.logo("assets/igv-streamlit-logo.png", size="large")
 st.title("igv-streamlit", text_alignment="center")
 st.divider()
