@@ -13,21 +13,16 @@ st.set_page_config(
 )
 
 
-import pathlib, os, requests
+import pathlib
 
-st.subheader("🐛 Debug")
+fasta_path = pathlib.Path(st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"))
+fai_path   = fasta_path.with_suffix(".fasta.fai")
 
-static_dir = pathlib.Path(__file__).parent / "static"
-st.write("static dir:", str(static_dir))
-st.write("static dir exists:", static_dir.exists())
+st.write("FASTA size:", fasta_path.stat().st_size, "bytes")
+st.write("FAI size:",   fai_path.stat().st_size,   "bytes")
+st.code(fai_path.read_text())   # shows chromosome names + lengths
 
-if static_dir.exists():
-    for e in sorted(static_dir.iterdir()):
-        target = os.readlink(e) if e.is_symlink() else "not a symlink"
-        target_exists = os.path.exists(target) if e.is_symlink() else "n/a"
-        st.write(f"`{e.name}` → `{target}` | target exists: `{target_exists}`")
 
-        
 st.logo("assets/igv-streamlit-logo.png", size="large")
 st.title("igv-streamlit", text_alignment="center")
 st.divider()
