@@ -37,9 +37,9 @@ st.sidebar.divider()
 # ═══════════════════════════════════════════════════════════════════════════════
 if active_tab == TAB_WELCOME:
     st.markdown(
-        "igv-streamlit is an unofficial Streamlit component for embedding the [IGV](https://igv.org/) genome browser into your Streamlit apps.\n\n"
-        "It provides support for files through both local file paths and remote URLs.\n\n"
-        "Choose a mode in the sidebar to see how you can use igv-streamlit to embed IGV in your genomics apps!\n\n"
+        "`igv-streamlit` is an unofficial Streamlit component for embedding the [IGV](https://igv.org/) genome browser into your Streamlit apps.\n\n"
+        "You can use it to browse genomic files -- both through local file paths and remote URLs.\n\n"
+        "This app serves as a complete documentation for how to use `igv-streamlit`. Choose a mode in the sidebar to get started!\n\n"
         "Brought to you by [MalariaGEN](https://www.malariagen.net/).",
         text_alignment="center",
     )
@@ -53,8 +53,8 @@ elif active_tab == TAB_BUILTIN:
     browser_height = st.sidebar.slider("Browser height (px)", 300, 700, 400, 50, key = "builtin_height")
 
     st.markdown(
-        "Here we access IGV's hg19 demo via URL. All the usual interactive features of IGV are available. "
-        "Note the fullscreen button in the top-right.",
+        "Here we access IGV's hg19 demo via URL. All the usual interactive features of IGV are available.\n\n"
+        "Note the fullscreen button in the top-right, and that the demo file only has a limited region available.",
         text_alignment = "center",
     )
 
@@ -80,12 +80,12 @@ elif active_tab == TAB_BUILTIN:
 import igv_streamlit as st_igv
 
 st_igv.browser(
-    genome = "hg19",
+    genome = "hg19", # Using IGV's built-in hg19 reference genome
     locus  = "chr22:24,376,166-24,376,456",
     tracks = [
         {
             "name"    : "NA12878 - chr22 (demo)",
-            "url"     : "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam",
+            "url"     : "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam", # Note the URL, not path!
             "indexURL": "https://s3.amazonaws.com/igv.org.demo/gstt1_sample.bam.bai",
             "format"  : "bam",
             "type"    : "alignment",
@@ -105,8 +105,10 @@ elif active_tab == TAB_LOCAL:
     browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 900, 50, key="local_height")
 
     st.markdown(
-        "Here we load local genomic files using `path` and `indexPath` instead of `url` and `indexURL`. "
-        "igv-streamlit serves them automatically via a built-in local file server.",
+        "Here we load local genomic files using `path` and `indexPath` instead of `url` and `indexURL`.\n\n"
+        "Note, these demo files only cover a small region of the genome since they need to fit on the repo.\n\n"
+        "When using local file paths, we must resolve relative paths to absolute paths using `st_igv.resolve_path()`.\n\n"
+        "`igv-streamlit` then serves them automatically via a built-in local file server. ",
         text_alignment="center",
     )
 
@@ -149,11 +151,12 @@ import igv_streamlit as st_igv
 
 st_igv.browser(
     reference={
-        # resolve_path() converts relative paths to absolute, anchored to this script —
-        # so they work regardless of which directory Streamlit was launched from.
-
         "fastaPath": st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"),
         "indexPath": st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta.fai")
+                # `st_igv.resolve_path()` converts relative paths to absolute, anchored to this script —
+                # so they work regardless of which directory Streamlit was launched from.
+
+                # Alternatively, provide absolute paths, e.g., "/Users/me/Downloads/SPT24175.filtered.bam"
     },
     locus="Pf3D7_07_v3:402,000-406,700",
     tracks=[
@@ -189,36 +192,29 @@ st_igv.browser(
 # REMOTE PF8-RELEASE
 # ═══════════════════════════════════════════════════════════════════════════════
 elif active_tab == TAB_REMOTE:
-    st.sidebar.subheader("Remote PF8 config")
+    st.sidebar.subheader("Configurations")
     browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 500, 50, key="remote_height")
-    locus          = st.sidebar.text_input("Locus", "Pf3D7_01_v3:1-100000", key="remote_locus")
-    sample_id      = st.sidebar.text_input("Sample ID", "PF0833-C", key="remote_sample")
 
-    st.subheader("Remote PF8-release files (Sanger COG bucket)")
-    st.write(
-        "Streams CRAM/FASTA/GFF directly from "
-        "`pf8-release.cog.sanger.ac.uk` — no local data needed."
+    st.markdown(
+        "Streams CRAM/FASTA/GFF directly from ",
+        text_alignment = "center"
     )
-
-    BASE = "https://pf8-release.cog.sanger.ac.uk"
 
     st_igv.browser(
         reference={
-            "fastaURL": f"{BASE}/reference/PlasmoDB-54-Pfalciparum3D7-Genome.fasta",
-            "name":     "PlasmoDB-54 Pf3D7",
+            "fastaURL": "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta",
         },
-        locus=locus or None,
+        locus = "Pf3D7_07_v3:400,000-410,000",
         tracks=[
             {
-                "name":             "Annotation",
-                "url":              f"{BASE}/annotations/PlasmoDB-55_Pfalciparum3D7.gff.gz",
+                "name":             "GFF annotation",
+                "url":              "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-55_Pfalciparum3D7.gff",
                 "format":           "gff3",
                 "type":             "annotation",
                 "displayMode":      "EXPANDED",
-                "visibilityWindow": 500_000,
             },
             {
-                "name":     sample_id,
+                "name":     "PF0833-C (Ghana, 2013)",
                 "url":      "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram",
                 "indexURL": "https://ftp.sra.ebi.ac.uk/vol1/run/ERR156/ERR15615711/PF0833-C.cram.crai",
                 "format":   "cram",
