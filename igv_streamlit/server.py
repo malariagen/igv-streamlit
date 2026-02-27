@@ -17,6 +17,14 @@ import threading
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import streamlit as st
+try:
+    from streamlit.web.server.server import Server
+    server = Server.get_current()
+    st.write("got server", type(server))
+except Exception as e:
+    st.write("failed to get server", e)
+    
 logger = logging.getLogger(__name__)
 
 _TORNADO_PREFIX = "/_igv_streamlit/file/"
