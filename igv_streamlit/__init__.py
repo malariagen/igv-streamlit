@@ -73,42 +73,7 @@ export default function(component) {
     const { data, parentElement, setStateValue } = component;
     if (!data || !data.config) return;
 
-    // ── Resolve __igv__<port>__<token> sentinels → real URLs ─────────────────
-    // On localhost the standalone server is used (port is meaningful).
-    // On any remote host the Tornado-injected route is used instead.
-    const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-
-    function resolveUrls(obj) {
-        if (Array.isArray(obj)) return obj.map(resolveUrls);
-        if (obj && typeof obj === 'object') {
-            const out = {};
-            for (const [k, v] of Object.entries(obj)) out[k] = resolveUrls(v);
-            return out;
-        }
-        if (typeof obj === 'string' && obj.startsWith('__igv__')) {
-            const parts = obj.split('__').filter(Boolean); // ['igv', port, token]
-            const port  = parts[1];
-            const token = parts[2];
-            return isLocal
-                ? `http://127.0.0.1:${port}/file/${token}`
-                : `/app/static/${token}`;
-        }
-        return obj;
-    }
-
-    const config     = resolveUrls(data.config);
-
-    // DEBUG — remove before release
-    console.log('IGV resolved config:', JSON.stringify(config, null, 2));
-
-    // Test-fetch the fastaURL to see what comes back
-    const fastaUrl = config?.reference?.fastaURL;
-    if (fastaUrl) {
-        fetch(fastaUrl, { headers: { 'Range': 'bytes=0-4270' } })
-            .then(r => r.text())
-            .then(text => console.log('FASTA content:', JSON.stringify(text.slice(0, 500))));
-    }
-
+    const config     = data.config;
     const configJson = JSON.stringify(config);
     const height     = data.height || 500;
 

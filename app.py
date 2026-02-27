@@ -12,22 +12,6 @@ st.set_page_config(
     layout     = "wide"
 )
 
-import streamlit as st
-import pathlib
-from streamlit import config as st_config
-
-st.write("enableStaticServing:", st_config.get_option("server.enableStaticServing"))
-
-static_dir = pathlib.Path(__file__).parent / "static"
-st.write("static dir:", str(static_dir))
-st.write("exists:", static_dir.exists())
-
-if static_dir.exists():
-    for f in sorted(static_dir.iterdir()):
-        size = f.stat().st_size if not f.is_symlink() else "SYMLINK"
-        st.write(f"`{f.name}` — size: `{size}`")
-
-        
 st.logo("assets/igv-streamlit-logo.png", size="large")
 st.title("igv-streamlit", text_alignment="center")
 st.divider()
@@ -120,45 +104,55 @@ elif active_tab == TAB_LOCAL:
     st.sidebar.subheader("Configurations")
     browser_height = st.sidebar.slider("Browser height (px)", 400, 1200, 900, 50, key="local_height")
 
+    import os
+    on_cloud = os.path.exists("/mount/src")
+
     st.markdown(
         "Here we load local genomic files using `path` and `indexPath` instead of `url` and `indexURL`.\n\n"
-        "Note, these demo files only cover a small region of the genome since they need to fit on the repo, but you can use full-sized files.\n\n"
-        "When using local file paths, we must resolve relative paths to absolute paths using `st_igv.resolve_path()`.\n\n"
-        "`igv-streamlit` then serves them automatically via a built-in local file server. ",
+        "When using local file paths, `igv-streamlit` serves them automatically via a built-in local file server.\n\n"
+        "**This only works when running Streamlit locally** — for cloud deployments, use remote URLs instead.",
         text_alignment="center",
     )
 
-    st_igv.browser(
-        reference={
-            "fastaPath": st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"),
-            "indexPath": st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta.fai")
-        },
-        locus="Pf3D7_07_v3:401,500-407,000",
-        tracks=[
-            {
-                "name":    "GFF annotations",
-                "path":    st_igv.resolve_path("local-data/PlasmoDB-55_Pfalciparum3D7.gff"),
-                "format": "gff3",
-                "type":   "annotation",
+    if on_cloud:
+        st.warning(
+            "This demo is running on Streamlit Cloud, which doesn't support local file serving. "
+            "Clone the repo and run `streamlit run app.py` locally to try this feature.",
+            icon="☁️",
+        )
+    else:
+
+        st_igv.browser(
+            reference={
+                "fastaPath": st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"),
+                "indexPath": st_igv.resolve_path("local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta.fai")
+            },
+            locus="Pf3D7_07_v3:401,500-407,000",
+            tracks=[
+                {
+                    "name":    "GFF annotations",
+                    "path":    st_igv.resolve_path("local-data/PlasmoDB-55_Pfalciparum3D7.gff"),
+                    "format": "gff3",
+                    "type":   "annotation",
+                },
+                {
+                "name":       "PF0883-C (Ghana, 2013)",
+                "path":       st_igv.resolve_path("local-data/PF0833-C.filtered.cram"),
+                "indexPath":  st_igv.resolve_path("local-data/PF0833-C.filtered.cram.crai"),
+                "format":     "cram",
+                "type":       "alignment",
             },
             {
-            "name":       "PF0883-C (Ghana, 2013)",
-            "path":       st_igv.resolve_path("local-data/PF0833-C.filtered.cram"),
-            "indexPath":  st_igv.resolve_path("local-data/PF0833-C.filtered.cram.crai"),
-            "format":     "cram",
-            "type":       "alignment",
-        },
-        {
-            "name":      "SPT24175 (Cameroon, 2017)",
-            "path":      st_igv.resolve_path("local-data/SPT24175.filtered.bam"),
-            "indexPath": st_igv.resolve_path("local-data/SPT24175.filtered.bam.bai"),
-            "format":    "bam",
-            "type":      "alignment",
-        }
-        ],
-        height = browser_height,
-        key    = "local_browser",
-    )
+                "name":      "SPT24175 (Cameroon, 2017)",
+                "path":      st_igv.resolve_path("local-data/SPT24175.filtered.bam"),
+                "indexPath": st_igv.resolve_path("local-data/SPT24175.filtered.bam.bai"),
+                "format":    "bam",
+                "type":      "alignment",
+            }
+            ],
+            height = browser_height,
+            key    = "local_browser",
+        )
 
     with st.popover("Click to peek at the Python code", width="stretch", type="primary"):
         st.code(
