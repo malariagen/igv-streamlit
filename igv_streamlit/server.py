@@ -24,6 +24,17 @@ logger = logging.getLogger(__name__)
 # __file__ is <repo>/igv_streamlit/server.py → parent.parent = repo root
 _STATIC_DIR = pathlib.Path(__file__).parent.parent / "static"
 
+def _clean_static_dir():
+    """Remove any symlinks left over from previous approaches."""
+    if not _STATIC_DIR.exists():
+        return
+    for entry in _STATIC_DIR.iterdir():
+        if entry.is_symlink():
+            entry.unlink()
+            logger.debug("igv-streamlit: removed stale symlink %s", entry.name)
+
+_clean_static_dir()
+
 _file_registry: dict[str, str] = {}
 _registry_lock  = threading.Lock()
 
@@ -185,18 +196,11 @@ def register_file(file_path: str) -> str:
         token = uuid.uuid4().hex
         _file_registry[token] = file_path
 
-    # Symlink into static/ so Streamlit's static handler can serve it on cloud
     _STATIC_DIR.mkdir(exist_ok=True)
     dest = _STATIC_DIR / token
     if not dest.exists():
-        try:
-            dest.symlink_to(file_path)
-            dest.stat()  # raises if symlink target is not followable (Streamlit Cloud)
-        except OSError:
-            if dest.is_symlink():
-                dest.unlink()
-            import shutil
-            shutil.copy2(file_path, dest)
+        import shutil
+        shutil.copy2(file_path, dest)
 
     return f"__igv__{port}__{token}"
 
