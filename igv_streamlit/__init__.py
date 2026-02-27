@@ -1,5 +1,3 @@
-# __init__.py
-
 """
 igv-streamlit
 =============
@@ -75,14 +73,36 @@ export default function(component) {
     const { data, parentElement, setStateValue } = component;
     if (!data || !data.config) return;
 
-    const config     = data.config;
+    // ── Resolve __igv__<port>__<token> sentinels → real URLs ─────────────────
+    // On localhost the standalone server is used (port is meaningful).
+    // On any remote host the Tornado-injected route is used instead.
+    const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+    function resolveUrls(obj) {
+        if (Array.isArray(obj)) return obj.map(resolveUrls);
+        if (obj && typeof obj === 'object') {
+            const out = {};
+            for (const [k, v] of Object.entries(obj)) out[k] = resolveUrls(v);
+            return out;
+        }
+        if (typeof obj === 'string' && obj.startsWith('__igv__')) {
+            const parts = obj.split('__').filter(Boolean); // ['igv', port, token]
+            const port  = parts[1];
+            const token = parts[2];
+            return isLocal
+                ? `http://127.0.0.1:${port}/file/${token}`
+                : `/_igv_streamlit/file/${token}`;
+        }
+        return obj;
+    }
+
+    const config     = resolveUrls(data.config);
     const configJson = JSON.stringify(config);
     const height     = data.height || 500;
 
     // ── Build DOM scaffold (idempotent across re-renders) ─────────────────────
     if (!parentElement._igvScaffold) {
 
-        // outerContainer is a flex column: toolbar on top, igvWrapper fills rest.
         const outerContainer = document.createElement('div');
         outerContainer.className = 'sigv-outer';
 
@@ -129,25 +149,15 @@ export default function(component) {
 
         parentElement._igvScaffold = { outerContainer, igvWrapper, toolbar, fsBtn, exitBtn };
 
-        // ── State ─────────────────────────────────────────────────────────────
         let _isFullscreen = false;
 
-        // ── Resize ────────────────────────────────────────────────────────────
-        // igv.js already listens to window 'resize' natively — we don't need
-        // to forward it. We only need to fire it manually when toggling
-        // fullscreen, since that changes the container size without a real
-        // browser window resize event occurring.
         const triggerIgvResize = () => {
             if (!igvWrapper._igvBrowser) return;
             window.dispatchEvent(new Event('resize'));
         };
 
-        // ── Enter pseudo-fullscreen ───────────────────────────────────────────
-        // Uses position:fixed — the native Fullscreen API requires
-        // <iframe allowfullscreen> which Streamlit does not set.
         const enterFullscreen = () => {
             _isFullscreen = true;
-            // Inherit the page background so dark-mode looks correct
             const pageBg = getComputedStyle(document.body).backgroundColor || '#fff';
             outerContainer.style.position   = 'fixed';
             outerContainer.style.top        = '0';
@@ -161,7 +171,6 @@ export default function(component) {
             requestAnimationFrame(triggerIgvResize);
         };
 
-        // ── Exit pseudo-fullscreen ────────────────────────────────────────────
         const exitFullscreen = () => {
             _isFullscreen = false;
             outerContainer.style.position   = '';
@@ -179,7 +188,6 @@ export default function(component) {
         fsBtn.addEventListener('click',  enterFullscreen);
         exitBtn.addEventListener('click', exitFullscreen);
 
-        // ── ESC key exits pseudo-fullscreen ───────────────────────────────────
         const onKeyDown = (e) => {
             if (e.key === 'Escape' && _isFullscreen) exitFullscreen();
         };
@@ -192,7 +200,6 @@ export default function(component) {
 
     const { outerContainer, igvWrapper } = parentElement._igvScaffold;
 
-    // Update height CSS var on every render (height prop may change)
     outerContainer.style.setProperty('--sigv-height', height + 'px');
 
     // ── destroy prior browser ─────────────────────────────────────────────────
@@ -212,10 +219,6 @@ export default function(component) {
             .then(browser => {
                 igvWrapper._igvBrowser    = browser;
                 igvWrapper._igvConfigJson = configJson;
-                // Only report locus back to Python if the caller requested it.
-                // Every setStateValue() call triggers a full Streamlit rerun,
-                // so if no on_locus_change callback is wired up we skip it
-                // entirely to avoid continuous reruns while panning/zooming.
                 if (data.trackLocus) {
                     let _locusTid  = null;
                     let _lastLocus = null;
@@ -223,7 +226,7 @@ export default function(component) {
                         if (_locusTid) clearTimeout(_locusTid);
                         _locusTid = setTimeout(() => {
                             _locusTid = null;
-                            if (label === _lastLocus) return; // no change, no rerun
+                            if (label === _lastLocus) return;
                             _lastLocus = label;
                             setStateValue('locus', label);
                         }, 300);
@@ -239,9 +242,6 @@ export default function(component) {
             });
     };
 
-    // ── Only recreate the browser if the config actually changed ─────────────
-    // Streamlit re-runs the component on every interaction in the app, so we
-    // guard here to avoid destroying and reloading all tracks unnecessarily.
     const launchIfNeeded = () => {
         if (igvWrapper._igvConfigJson === configJson) return;
         createBrowser();
@@ -251,8 +251,6 @@ export default function(component) {
     if (window.igv) {
         launchIfNeeded();
     } else if (window._igvScriptLoading) {
-        // Script is already in-flight — poll until ready.
-        // Cap at 30 s to avoid an infinite loop if the CDN load silently failed.
         const deadline = Date.now() + 30_000;
         const tid = setInterval(() => {
             if (window.igv) {
@@ -294,7 +292,6 @@ export default function(component) {
 
 # ── CSS ───────────────────────────────────────────────────────────────────────
 _CSS = """
-/* ── outer container: flex column so toolbar + browser stack vertically ───── */
 .sigv-outer {
     display:        flex;
     flex-direction: column;
@@ -303,8 +300,6 @@ _CSS = """
     background:     var(--st-background-color, #fff);
     box-sizing:     border-box;
 }
-
-/* ── toolbar row: fixed height, button sits here — never overlaps tracks ──── */
 .sigv-toolbar {
     display:         flex;
     align-items:     center;
@@ -315,16 +310,12 @@ _CSS = """
     border-bottom:   1px solid rgba(128,128,128,0.15);
     background:      var(--st-background-color, #fff);
 }
-
-/* ── igv.js render target: fills all remaining vertical space ─────────────── */
 .sigv-browser {
     flex:       1;
     width:      100%;
     overflow:   hidden;
-    min-height: 0; /* required for flex child to shrink below content size */
+    min-height: 0;
 }
-
-/* ── button ───────────────────────────────────────────────────────────────── */
 .sigv-btn {
     display:         flex;
     align-items:     center;
@@ -357,8 +348,6 @@ _CSS = """
     transform:  translateY(0);
     box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
-
-/* igv internal fix */
 .igv-navbar { box-sizing: border-box !important; }
 """
 
@@ -400,7 +389,6 @@ def _build_igv_config(
     tracks: list[dict] | None,
     extra: dict,
 ) -> dict:
-    """Assemble the full IGV browser config dict."""
     config: dict[str, Any] = {}
 
     if genome and isinstance(genome, str):
@@ -424,8 +412,8 @@ def _build_igv_config(
 # ── Public API ────────────────────────────────────────────────────────────────
 def resolve_path(path: str) -> str:
     """
-    Path resolution
-    ---------------
+    Resolve a path relative to the calling script's directory.
+
     Paths passed via ``path`` / ``indexPath`` / ``fastaPath`` etc. are resolved
     relative to Python's current working directory (i.e. where you launched
     Streamlit from). If your data files live next to your script and you want
@@ -493,37 +481,6 @@ def browser(
     result
         A Streamlit component result. Access ``result.locus`` for the current
         genomic position (updated on navigation).
-
-    Examples
-    --------
-    **Built-in genome + remote BAM:**
-
-    >>> st_igv(
-    ...     genome="hg38",
-    ...     locus="BRCA1",
-    ...     tracks=[{
-    ...         "name": "Sample",
-    ...         "url": "https://example.com/sample.bam",
-    ...         "indexURL": "https://example.com/sample.bam.bai",
-    ...         "type": "alignment",
-    ...     }],
-    ... )
-
-    **Custom FASTA + local CRAM:**
-
-    >>> st_igv(
-    ...     reference={
-    ...         "fastaPath": "/data/genome.fasta",
-    ...         "indexPath": "/data/genome.fasta.fai",
-    ...         "name": "Pf3D7",
-    ...     },
-    ...     tracks=[{
-    ...         "name": "PF0833-C",
-    ...         "path":      "/data/PF0833-C.filtered.cram",
-    ...         "indexPath": "/data/PF0833-C.filtered.cram.crai",
-    ...         "type": "alignment",
-    ...     }],
-    ... )
     """
     config = _build_igv_config(genome, reference, locus, tracks, kwargs)
 
@@ -540,5 +497,4 @@ def browser(
     return result
 
 
-# convenience re-export so users can do: from igv_streamlit import st_igv
-__all__ = ["st_igv"]
+__all__ = ["browser", "resolve_path"]
