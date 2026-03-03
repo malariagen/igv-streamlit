@@ -92,7 +92,7 @@ export default function(component) {
         fsBtn.className = 'sigv-btn';
         fsBtn.title = 'Enter full screen';
         fsBtn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="15 3 21 3 21 9"/>
               <polyline points="9 21 3 21 3 15"/>
@@ -106,7 +106,7 @@ export default function(component) {
         exitBtn.title = 'Exit full screen  (Esc)';
         exitBtn.style.display = 'none';
         exitBtn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="4 14 10 14 10 20"/>
               <polyline points="20 10 14 10 14 4"/>

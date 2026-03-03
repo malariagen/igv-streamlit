@@ -285,8 +285,6 @@ st_igv.browser(
 # ADVANCED CONFIG
 # ═══════════════════════════════════════════════════════════════════════════════
 elif active_tab == TAB_ADVANCED:
-    st.sidebar.subheader("Configurations")
-
     BASE_FASTA = "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta"
     BASE_GFF   = "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-55_Pfalciparum3D7.gff"
 
@@ -310,7 +308,8 @@ elif active_tab == TAB_ADVANCED:
     }
 
     st.markdown(
-        "This page demonstrates how you can integrate Streamlit's UI elements with IGV's configuration to build a custom browser interface.\n\n"
+        "This page demonstrates how you can integrate Streamlit's UI elements with IGV's configuration to build a custom browser interface.\n\n",
+        text_alignment = "center"
     )
 
     @st.dialog("IGV Genome Browser", width="large")
@@ -401,5 +400,6 @@ elif active_tab == TAB_ADVANCED:
             key="advanced_browser",
         )
 
-    if st.button("Browse IGV", type="primary"):
+    _, centre, _ = st.columns([2, 1, 2])
+    if centre.button("Browse IGV", type="primary", width = "stretch"):
         show_browser()
