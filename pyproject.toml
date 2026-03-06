@@ -28,3 +28,6 @@ Issues   = "https://github.com/malariagen/igv-streamlit/issues"
 
 [tool.setuptools.packages.find]
 include = ["igv_streamlit*"]
+
+[project.scripts]
+igv-streamlit = "igv_streamlit.cli:main"
