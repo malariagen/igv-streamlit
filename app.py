@@ -7,6 +7,8 @@ import sys
 sys.path.insert(0, os.path.dirname(__file__))
 import igv_streamlit as st_igv
 
+import pandas as pd
+
 st.set_page_config(
     page_title = "igv-streamlit",
     page_icon  = "assets/igv-streamlit-logo.png",
@@ -403,3 +405,40 @@ elif active_tab == TAB_ADVANCED:
     _, centre, _ = st.columns([2, 1, 2])
     if centre.button("Browse IGV", type="primary", width = "stretch"):
         show_browser()
+    
+@st.cache_data()
+def load_metadata():
+    return pd.read_csv("local-data/Pf_9_samples_20260227.txt", sep="\t", usecols = ["Sample", "MalariaGEN ENA CRAM URL"])
+
+meta = load_metadata()
+
+sample_id = st.text_input("Enter sample ID to view in IGV", key="sample_id_input")
+locus = st.text_input("Enter locus to view (e.g. Pf3D7_07_v3:402,282-406,400)", key="locus_input", value="Pf3D7_07_v3:402,282-406,400")
+
+if sample_id:
+    cram_url = meta.loc[meta["Sample"] == sample_id, "MalariaGEN ENA CRAM URL"].values[0]
+
+    st_igv.browser(
+        reference={
+            "fastaURL": "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-54_Pfalciparum3D7_Genome.fasta",
+        },
+        locus = locus,
+        tracks=[
+            {
+                "name":        "GFF annotation",
+                "url":         "https://raw.githubusercontent.com/malariagen/igv-streamlit/master/local-data/PlasmoDB-55_Pfalciparum3D7.gff",
+                "format":      "gff3",
+                "type":        "annotation",
+            },
+            {
+                "name":     sample_id,
+                "url":      cram_url.replace("ftp://", "https://"),
+                "indexURL": cram_url.replace("ftp://", "https://") + ".crai",
+                "format":   "cram",
+                "type":     "alignment",
+                "showSoftClips": True
+            },
+        ],
+        height=800,
+        key="remote_browser",
+    )

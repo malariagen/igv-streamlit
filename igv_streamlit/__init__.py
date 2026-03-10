@@ -115,6 +115,18 @@ export default function(component) {
             </svg>
             Exit full screen`;
 
+        const refreshBtn = document.createElement('button');
+        refreshBtn.className = 'sigv-btn';
+        refreshBtn.title = 'Reload tracks';
+        refreshBtn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Refresh`;
+
+        toolbar.appendChild(refreshBtn);
         toolbar.appendChild(fsBtn);
         toolbar.appendChild(exitBtn);
         outerContainer.appendChild(toolbar);
@@ -124,8 +136,10 @@ export default function(component) {
         // Single source of truth for fullscreen state — stored on the scaffold
         // so external code can inspect it, and used directly in this closure.
         const scaffold = {
-            outerContainer, igvWrapper, toolbar, fsBtn, exitBtn,
+            outerContainer, igvWrapper, toolbar, fsBtn, exitBtn, refreshBtn,
             isFullscreen: false,
+            // createBrowser is attached below once it is defined
+            createBrowser: null,
         };
         parentElement._igvScaffold = scaffold;
 
@@ -191,7 +205,8 @@ export default function(component) {
                 'height:40px;padding:0 8px;box-sizing:border-box;' +
                 'border-bottom:1px solid rgba(128,128,128,0.15);';
 
-            exitBtn.style.cssText = _BTN_INLINE;
+            exitBtn.style.cssText    = _BTN_INLINE;
+            refreshBtn.style.cssText = _BTN_INLINE;
 
             fsBtn.style.display   = 'none';
             // display is already included in _BTN_INLINE, no need to set again
@@ -210,8 +225,9 @@ export default function(component) {
             // Clear inline overrides — CSS classes take over again
             outerContainer.style.cssText = '';
             outerContainer.style.setProperty('--sigv-height', height + 'px');
-            toolbar.style.cssText  = '';
-            exitBtn.style.cssText  = '';
+            toolbar.style.cssText    = '';
+            exitBtn.style.cssText    = '';
+            refreshBtn.style.cssText = '';
 
             // Remove backdrop
             if (_fsOverlay && _fsOverlay.parentNode) {
@@ -228,6 +244,21 @@ export default function(component) {
 
         fsBtn.addEventListener('click',  enterFullscreen);
         exitBtn.addEventListener('click', exitFullscreen);
+
+        // Refresh: destroy and recreate the browser with the current config.
+        // We delegate to scaffold.createBrowser so the button always calls
+        // whichever createBrowser closure was most recently attached (i.e. the
+        // one that captured the latest config / configJson).
+        refreshBtn.addEventListener('click', () => {
+            if (scaffold.createBrowser) {
+                refreshBtn.disabled = true;
+                refreshBtn.style.opacity = '0.5';
+                scaffold.createBrowser(() => {
+                    refreshBtn.disabled = false;
+                    refreshBtn.style.opacity = '';
+                });
+            }
+        });
 
         const onKeyDown = (e) => {
             if (e.key === 'Escape' && scaffold.isFullscreen) exitFullscreen();
@@ -258,7 +289,9 @@ export default function(component) {
         }
     };
 
-    const createBrowser = () => {
+    // onDone is an optional callback invoked after the browser is created (or
+    // on error), used by the refresh button to re-enable itself.
+    const createBrowser = (onDone) => {
         destroyBrowser();
         window.igv.createBrowser(igvWrapper, config)
             .then(browser => {
@@ -277,6 +310,7 @@ export default function(component) {
                         }, 300);
                     });
                 }
+                if (onDone) onDone();
             })
             .catch(err => {
                 igvWrapper.innerHTML =
@@ -284,8 +318,13 @@ export default function(component) {
                         IGV error: ${err.message || err}
                     </div>`;
                 console.error('IGV error:', err);
+                if (onDone) onDone();
             });
     };
+
+    // Keep scaffold.createBrowser pointing at the latest closure so the
+    // refresh button always uses the current config.
+    parentElement._igvScaffold.createBrowser = createBrowser;
 
     const launchIfNeeded = () => {
         if (igvWrapper._igvConfigJson === configJson) return;
@@ -343,6 +382,7 @@ _CSS = """
     flex-shrink:     0;
     height:          40px;
     padding:         0 8px;
+    gap:             6px;
     border-bottom:   1px solid rgba(128,128,128,0.15);
     background:      var(--st-background-color, #fff);
     box-sizing:      border-box;
@@ -385,6 +425,10 @@ _CSS = """
 .sigv-btn:active {
     transform:  translateY(0);
     box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.sigv-btn:disabled {
+    cursor:  not-allowed;
+    opacity: 0.5;
 }
 .igv-navbar { box-sizing: border-box !important; }
 """
